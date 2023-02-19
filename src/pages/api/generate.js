@@ -1,11 +1,13 @@
 import { Configuration, OpenAIApi } from "openai";
+import generatePrompt from "./prompt";
 
 const configuration = new Configuration({
-  apiKey: process.env.OPEN_API_KEY,
+  apiKey: process.env.NEXT_PUBLIC_OPEN_API_KEY,
 });
 const openai = new OpenAIApi(configuration);
 
-const generate = async (req, res) => {
+// eslint-disable-next-line import/no-anonymous-default-export
+export default async function (req, res) {
   if (!configuration.apiKey) {
     res.status(500).json({
       error: {
@@ -16,7 +18,10 @@ const generate = async (req, res) => {
   }
 
   const text = req.body.text || ``;
-  if (animal.trim().length === 0) {
+  const format = req.body.format || "question";
+  const useSuggestions = req.body.useSuggestions || true;
+
+  if (text.trim().length === 0) {
     res.status(400).json({
       error: {
         message: "Please enter valid text",
@@ -28,9 +33,11 @@ const generate = async (req, res) => {
   try {
     const completion = await openai.createCompletion({
       model: "text-davinci-003",
-      prompt: generatePrompt(text),
-      temperature: 0.6,
+      prompt: generatePrompt(text, format, useSuggestions),
+      temperature: 0.3,
+      max_tokens: 2048,
     });
+    console.log(completion.data.choices[0].text);
     res.status(200).json({ result: completion.data.choices[0].text });
   } catch (error) {
     if (error.response) {
@@ -45,39 +52,4 @@ const generate = async (req, res) => {
       });
     }
   }
-};
-
-const questionSwitch =
-  "The front of the flashcard should be in the form of a question.";
-const topicSwitch =
-  "The front of the flashcard should be the answer to the statement on the back.";
-const suggestionSwitch =
-  "Generate some (no more than 1 in 5) flashcards related to the topic, but not directly from the provided text.";
-
-const generatePrompt = (text, format, useSuggestions) => {
-  return `Given some unstructured text, return JSON representations of flashcards
-    based on information in that text. ${
-      format === "question" ? questionSwitch : topicSwitch
-    } ${useSuggestions && suggestionSwitch} These flashcards are marked
-    with "suggested: true". The number of flashcards generated should be sufficient to prepare 
-    for an exam on the content present in the text. The JSON should follow the following format:
-
-    [
-        {
-            ${useSuggestions && `"suggested": false`}
-            "front": "Paris"
-            "back": "The capital of France"
-        },
-        {
-            ${useSuggestions && `"suggested": true`}
-            "front": "London"
-            "back": "The capital of Britain"
-        }
-    ]
-
-
-    Text: ${text}
-    `;
-};
-
-export default generate;
+}
