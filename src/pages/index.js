@@ -2,13 +2,14 @@ import { useState } from "react";
 
 export default function Home() {
   const [textInput, setTextInput] = useState("");
-  const [result, setResult] = useState();
+  const [csvResult, setCsvResult] = useState();
+  const [subject, setSubject] = useState();
   const [currentLength, setCurrentLength] = useState(0);
   const placeholder = "Generating...";
 
   async function onSubmit(event) {
     event.preventDefault();
-    setResult(placeholder);
+    setCsvResult(placeholder);
 
     try {
       const response = await fetch("/api/generate", {
@@ -17,7 +18,7 @@ export default function Home() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          text: textInput.trim().replace(/(\r\n|\n|\r)/gm, ""),
+          text: textInput.trim().replace(/(\r\n|\n|\r)/gm, " "),
         }),
       });
 
@@ -30,7 +31,13 @@ export default function Home() {
         );
       }
 
-      setResult(data.result);
+      const subject = data.result.match(
+        /(?<=subject:\s)(.*?)(?=\sfront,back)/
+      )[0];
+      setSubject(subject);
+
+      const csv = data.result.match(/(?=front,back).*/s)[0];
+      setCsvResult(csv);
     } catch (error) {
       // Consider implementing your own error handling logic here
       console.error(error);
@@ -46,7 +53,7 @@ export default function Home() {
           name="textinput"
           rows="20"
           cols="80"
-          maxLength={3000}
+          maxLength={8192}
           placeholder="Enter text to generate flashcards from"
           value={textInput}
           onChange={(e) => {
@@ -56,8 +63,11 @@ export default function Home() {
         />
         <button type="submit">Generate Flashcards</button>
       </form>
-      <div>{currentLength}/3000</div>
-      <div>{result}</div>
+      <div>{currentLength}/8192</div>
+      <br />
+      <div>{subject}</div>
+      <br />
+      <div>{csvResult}</div>
     </div>
   );
 }
