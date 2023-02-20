@@ -3,22 +3,26 @@ import { useState } from "react";
 export default function Home() {
   const [textInput, setTextInput] = useState("");
   const [result, setResult] = useState();
-  const [currentTokens, setCurrentTokens] = useState(0);
+  const [currentLength, setCurrentLength] = useState(0);
   const placeholder = "Generating...";
 
   async function onSubmit(event) {
     event.preventDefault();
     setResult(placeholder);
+
     try {
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ text: textInput }),
+        body: JSON.stringify({
+          text: textInput.trim().replace(/(\r\n|\n|\r)/gm, ""),
+        }),
       });
 
       const data = await response.json();
+
       if (response.status !== 200) {
         throw (
           data.error ||
@@ -26,7 +30,7 @@ export default function Home() {
         );
       }
 
-      setResult(JSON.parse(data.result.match(/(?={).*/s)[0]));
+      setResult(data.result);
     } catch (error) {
       // Consider implementing your own error handling logic here
       console.error(error);
@@ -42,22 +46,18 @@ export default function Home() {
           name="textinput"
           rows="20"
           cols="80"
-          maxLength={2048}
+          maxLength={3000}
           placeholder="Enter text to generate flashcards from"
           value={textInput}
           onChange={(e) => {
-            setCurrentTokens(e.target.value.length);
+            setCurrentLength(e.target.value.length);
             setTextInput(e.target.value);
           }}
         />
         <button type="submit">Generate Flashcards</button>
       </form>
-      <div>{currentTokens}/2048</div>
-      <div>
-        {result && result != placeholder
-          ? JSON.stringify(result, null, 2)
-          : result}
-      </div>
+      <div>{currentLength}/3000</div>
+      <div>{result}</div>
     </div>
   );
 }
